@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, abort
 import sqlite3
+from flask import Flask, render_template, request, abort, Response
+from datetime import datetime
 
 app = Flask(__name__)
 DB_NAME = "phones.db"
@@ -245,7 +247,56 @@ def seo_page(slug):
         return dynamic_category(slug)
 
     abort(404)
+@app.route("/sitemap.xml")
+def sitemap():
 
+    pages = []
+
+    today = datetime.now().date().isoformat()
+
+    static_urls = [
+        "/",
+        "/compare",
+        "/recommend",
+        "/best-under-15000",
+        "/best-under-25000",
+        "/best-under-50000",
+        "/best-camera-phones",
+        "/best-gaming-phones",
+        "/best-battery-phones",
+        "/best-samsung-phones",
+        "/best-oneplus-phones",
+        "/about",
+        "/contact",
+        "/privacy-policy",
+        "/terms"
+    ]
+
+    for url in static_urls:
+        pages.append(f"""
+        <url>
+            <loc>https://gadgetadvisor.onrender.com{url}</loc>
+            <lastmod>{today}</lastmod>
+        </url>
+        """)
+
+    with get_db() as conn:
+        phones = conn.execute("SELECT id FROM phones").fetchall()
+
+    for phone in phones:
+        pages.append(f"""
+        <url>
+            <loc>https://gadgetadvisor.onrender.com/phone/{phone['id']}</loc>
+            <lastmod>{today}</lastmod>
+        </url>
+        """)
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{''.join(pages)}
+</urlset>"""
+
+    return Response(xml, mimetype="application/xml")
 # --- STATIC CONTENT ROUTES ---
 @app.route("/about")
 def about(): return render_template("about.html")
