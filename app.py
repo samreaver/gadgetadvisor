@@ -8,7 +8,9 @@ def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
-
+@app.route("/google257792cf7979e332.html")
+def google_verify():
+    return app.send_static_file("google257792cf7979e332.html")
 @app.route("/")
 def home():
     search = request.args.get("search", "").strip()
