@@ -1,7 +1,6 @@
-from flask import Flask, render_template, request, abort
+from datetime import datetime
 import sqlite3
 from flask import Flask, render_template, request, abort, Response
-from datetime import datetime
 
 app = Flask(__name__)
 DB_NAME = "phones.db"
@@ -10,9 +9,11 @@ def get_db():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+
 @app.route("/google257792cf7979e332.html")
 def google_verify():
     return app.send_static_file("google257792cf7979e332.html")
+
 @app.route("/")
 def home():
     search = request.args.get("search", "").strip()
@@ -77,9 +78,7 @@ def recommend():
         best_score = -1
 
         for phone in phones:
-            # Added defensive safeguards against format anomalies
             try:
-                # Extracts numeric digits cleanly even if formats vary (e.g. "50 MP", "5000mAh")
                 battery_str = "".join(filter(str.isdigit, str(phone["battery"] or "")))
                 camera_str = "".join(filter(str.isdigit, str(phone["camera"] or "")))
                 
@@ -106,9 +105,7 @@ def recommend():
 
 @app.route("/phone/<int:id>")
 def phone(id):
-
     with get_db() as conn:
-
         phone_data = conn.execute(
             "SELECT * FROM phones WHERE id=?",
             (id,)
@@ -164,7 +161,6 @@ def compare_two(id1, id2):
     return render_template("compare_two.html", phone1=phone1, phone2=phone2)
 
 # --- CLEANED DYNAMIC CATEGORY FILTERING ---
-# This dictionary handles structural logic mapping instead of repeating routes
 CATEGORIES = {
     "best-under-15000": ("Best Phones Under ₹15,000", "SELECT * FROM phones WHERE price <= 15000 ORDER BY rating DESC"),
     "best-under-25000": ("Best Phones Under ₹25,000", "SELECT * FROM phones WHERE price <= 25000 ORDER BY rating DESC"),
@@ -172,64 +168,21 @@ CATEGORIES = {
     "best-samsung-phones": ("Best Samsung Phones", "SELECT * FROM phones WHERE brand='Samsung' ORDER BY rating DESC"),
     "best-oneplus-phones": ("Best OnePlus Phones", "SELECT * FROM phones WHERE brand='OnePlus' ORDER BY rating DESC"),
     "best-gaming-phones": ("Best Gaming Phones", "SELECT * FROM phones ORDER BY gaming_score DESC"),
-    # Safe regex / replacement casting strings in SQLite
     "best-camera-phones": ("Best Camera Phones", "SELECT * FROM phones ORDER BY CAST(REPLACE(REPLACE(camera, 'MP', ''), ' ', '') AS INTEGER) DESC"),
     "best-battery-phones": ("Best Battery Phones", "SELECT * FROM phones ORDER BY CAST(REPLACE(REPLACE(battery, 'mAh', ''), ' ', '') AS INTEGER) DESC"),
-    "best-camera-under-25000": ("Best Camera Phones Under ₹25,000", "SELECT * FROM phones WHERE price <= 25000 ORDER BY CAST(REPLACE(REPLACE(camera, 'MP', ''), ' ', '') AS INTEGER) DESC")
+    "best-camera-under-25000": ("Best Camera Phones Under ₹25,000", "SELECT * FROM phones WHERE price <= 25000 ORDER BY CAST(REPLACE(REPLACE(camera, 'MP', ''), ' ', '') AS INTEGER) DESC"),
+    "best-under-10000": ("Best Phones Under ₹10,000", "SELECT * FROM phones WHERE price <= 10000 ORDER BY rating DESC"),
+    "best-under-20000": ("Best Phones Under ₹20,000", "SELECT * FROM phones WHERE price <= 20000 ORDER BY rating DESC"),
+    "best-under-30000": ("Best Phones Under ₹30,000", "SELECT * FROM phones WHERE price <= 30000 ORDER BY rating DESC"),
+    "best-under-40000": ("Best Phones Under ₹40,000", "SELECT * FROM phones WHERE price <= 40000 ORDER BY rating DESC"),
+    "best-under-60000": ("Best Phones Under ₹60,000", "SELECT * FROM phones WHERE price <= 60000 ORDER BY rating DESC"),
+    "best-vivo-phones": ("Best Vivo Phones", "SELECT * FROM phones WHERE brand='Vivo' ORDER BY rating DESC"),
+    "best-realme-phones": ("Best Realme Phones", "SELECT * FROM phones WHERE brand='Realme' ORDER BY rating DESC"),
+    "best-apple-phones": ("Best Apple iPhones", "SELECT * FROM phones WHERE brand='Apple' ORDER BY rating DESC"),
+    "best-iqoo-phones": ("Best iQOO Phones", "SELECT * FROM phones WHERE brand='iQOO' ORDER BY rating DESC"),
+    "best-poco-phones": ("Best POCO Phones", "SELECT * FROM phones WHERE brand='POCO' ORDER BY rating DESC")
 }
-CATEGORIES.update({
 
-    "best-under-10000": (
-        "Best Phones Under ₹10,000",
-        "SELECT * FROM phones WHERE price <= 10000 ORDER BY rating DESC"
-    ),
-
-    "best-under-20000": (
-        "Best Phones Under ₹20,000",
-        "SELECT * FROM phones WHERE price <= 20000 ORDER BY rating DESC"
-    ),
-
-    "best-under-30000": (
-        "Best Phones Under ₹30,000",
-        "SELECT * FROM phones WHERE price <= 30000 ORDER BY rating DESC"
-    ),
-
-    "best-under-40000": (
-        "Best Phones Under ₹40,000",
-        "SELECT * FROM phones WHERE price <= 40000 ORDER BY rating DESC"
-    ),
-
-    "best-under-60000": (
-        "Best Phones Under ₹60,000",
-        "SELECT * FROM phones WHERE price <= 60000 ORDER BY rating DESC"
-    ),
-
-    "best-vivo-phones": (
-        "Best Vivo Phones",
-        "SELECT * FROM phones WHERE brand='Vivo' ORDER BY rating DESC"
-    ),
-
-    "best-realme-phones": (
-        "Best Realme Phones",
-        "SELECT * FROM phones WHERE brand='Realme' ORDER BY rating DESC"
-    ),
-
-    "best-apple-phones": (
-        "Best Apple iPhones",
-        "SELECT * FROM phones WHERE brand='Apple' ORDER BY rating DESC"
-    ),
-
-    "best-iqoo-phones": (
-        "Best iQOO Phones",
-        "SELECT * FROM phones WHERE brand='iQOO' ORDER BY rating DESC"
-    ),
-
-    "best-poco-phones": (
-        "Best POCO Phones",
-        "SELECT * FROM phones WHERE brand='POCO' ORDER BY rating DESC"
-    )
-
-})
 @app.route("/category/<string:cat_slug>")
 def dynamic_category(cat_slug):
     if cat_slug not in CATEGORIES:
@@ -240,37 +193,30 @@ def dynamic_category(cat_slug):
         phones = conn.execute(query).fetchall()
         
     return render_template("category.html", title=title, phones=phones)
+
 @app.route("/<path:slug>")
 def seo_page(slug):
-
     if slug in CATEGORIES:
         return dynamic_category(slug)
-
     abort(404)
+
 @app.route("/sitemap.xml")
 def sitemap():
-
     pages = []
-
     today = datetime.now().date().isoformat()
 
     static_urls = [
         "/",
         "/compare",
         "/recommend",
-        "/best-under-15000",
-        "/best-under-25000",
-        "/best-under-50000",
-        "/best-camera-phones",
-        "/best-gaming-phones",
-        "/best-battery-phones",
-        "/best-samsung-phones",
-        "/best-oneplus-phones",
         "/about",
         "/contact",
         "/privacy-policy",
         "/terms"
     ]
+
+    for slug in CATEGORIES.keys():
+        static_urls.append(f"/{slug}")
 
     for url in static_urls:
         pages.append(f"""
@@ -297,6 +243,7 @@ def sitemap():
 </urlset>"""
 
     return Response(xml, mimetype="application/xml")
+
 # --- STATIC CONTENT ROUTES ---
 @app.route("/about")
 def about(): return render_template("about.html")
